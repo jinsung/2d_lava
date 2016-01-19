@@ -9,7 +9,7 @@ class Shaders {
 		var shader = [
 			'void main() {',
 				'vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );',
-				'gl_PointSize = 10.0;',
+				'gl_PointSize = 60.0;',
 				'gl_Position = projectionMatrix * mvPosition;',
 			'}'
 		];
@@ -20,8 +20,8 @@ class Shaders {
 		var shader = [
 			'uniform sampler2D texture;',
 			'void main() {',
-				//'gl_FragColor = texture2D(texture, gl_PointCoord );',
-				'gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);',
+				'gl_FragColor = texture2D(texture, gl_PointCoord );',
+				//'gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);',
 			'}'
 		];
 		return shader.join('');

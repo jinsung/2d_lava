@@ -1,6 +1,5 @@
 "use strict";
 
-
 class Main {
     constructor() {
         this.init();
@@ -29,11 +28,13 @@ class Main {
         this.renderer = new THREE.WebGLRenderer();
         this.renderer.setPixelRatio( window.devicePixelRatio );
         this.renderer.setSize( window.innerWidth, window.innerHeight );
+        this.renderer.autoClear = false;
         document.body.appendChild( this.renderer.domElement );
 
         // setup particles
         this.isParticleReady = false;
-        this.particles = new Particles(100, 100);
+        this.particlesSize = 200
+        this.particles = new Particles(this.particlesSize, this.particlesSize);
         this.particles.init().then ( (data) => {
                 this.onParticlesReady(data);
             }
@@ -43,8 +44,12 @@ class Main {
     }
 
     onParticlesReady(data) {
+
+        this.particleRenderTarget = new ParticlesRenderTarget( 
+            this.renderer, this.width, this.height, 
+            this.particles.mesh );
+        this.scene.add( this.particleRenderTarget.mesh );
         this.isParticleReady = true;
-        this.scene.add( this.particles.mesh );
     }
 
     onWindowResize() {
@@ -60,10 +65,19 @@ class Main {
 
     animate() {
         window.requestAnimationFrame( this.animate.bind(this) );
+        
         if (this.isParticleReady) {
+
             this.particles.update();
+            this.renderer.clear();
+
+            this.particleRenderTarget.update();
+
+            
+            this.renderer.render( this.scene, this.camera );
+
         }
-        this.renderer.render( this.scene, this.camera );
+        
     }
 }
 

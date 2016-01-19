@@ -23,13 +23,54 @@ class Particles {
 		this.particleTexture = texture;
 		let gravity = new b2Vec2(0, 10);
 		window.world = new b2World(gravity);
-		this.createBasket();
+		this.createBucket();
 		this.createParticles();
 		this.createMesh();
 	}
 
-	createBasket () {
-		//let
+	createBucket () {
+		let bodyDef = new b2BodyDef();
+		bodyDef.density = 1.0;
+
+		let ground = window.world.CreateBody(bodyDef);
+
+		let b2_width = this.mWidth / this.worldScale * 2;
+		let b2_height = this.mHeight / this.worldScale * 2;
+		let b2_centerX = b2_width / 2;
+		let b2_centerY = b2_height / 2;
+		let shapeDensity = 1;
+		let thickness = 0.05;
+
+		// TODO: why origin is not the center????
+		// bottom bar
+		let wg = new b2PolygonShape();
+		wg.SetAsBoxXYCenterAngle(
+			b2_width, 
+			thickness,
+			new b2Vec2( b2_centerX/2, b2_height),
+			0
+		);
+		ground.CreateFixtureFromShape( wg, shapeDensity );
+
+		// right bar
+		let wgr = new b2PolygonShape();
+		wgr.SetAsBoxXYCenterAngle(
+			thickness, 
+			b2_height,
+			new b2Vec2( -b2_centerX, b2_centerY ),
+			0
+		);
+		ground.CreateFixtureFromShape( wgr, shapeDensity );
+
+		// left bar
+		let wgl = new b2PolygonShape();
+		wgl.SetAsBoxXYCenterAngle(
+			thickness,
+			b2_height, 
+			new b2Vec2( b2_width , b2_centerY ),
+			0
+		);
+		ground.CreateFixtureFromShape( wgl, shapeDensity );
 	}
 
 	createParticles () {
@@ -65,15 +106,14 @@ class Particles {
 			);
 		this.geometry.addAttribute( 'position', new THREE.BufferAttribute( this.vertices, 3 ) );
 
-		var shaders = new Shaders();
 		this.uniforms = {
 			texture: { type: 't', value: this.particleTexture }
 		}
 
 		let material = new THREE.ShaderMaterial({
 			uniforms: this.uniforms,
-			vertexShader: shaders.getParticleVertShader(),
-			fragmentShader: shaders.getParticleFragShader(),
+			vertexShader: this.getVertShader(),
+			fragmentShader: this.getFragShader(),
 			blending: THREE.AdditiveBlending,
 			depthTest: false,
 			transparent: true
@@ -102,10 +142,31 @@ class Particles {
 		
 	}
 
-
 	update() {
 		window.world.Step(1.0 / 60.0, 8, 10);
 		this.updateParticlePositions();
 		this.geometry.attributes.position.needsUpdate = true;
+	}
+
+	getVertShader() {
+		let shader = [
+			'void main() {',
+				'vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );',
+				'gl_PointSize = 60.0;',
+				'gl_Position = projectionMatrix * mvPosition;',
+			'}'
+		];
+		return shader.join('');
+	}
+
+	getFragShader() {
+		let shader = [
+			'uniform sampler2D texture;',
+			'void main() {',
+				'gl_FragColor = texture2D(texture, gl_PointCoord );',
+				'gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);',
+			'}'
+		];
+		return shader.join('');
 	}
 }
