@@ -8,24 +8,43 @@ class Particles {
 
 	init () {
 		let textureLoader = new THREE.TextureLoader();
-
+		this.loadCounter = 0;
 		return new Promise(
 			(resolve, reject) => {
 				textureLoader.load('images/spark1.png', (texture) => {
-					this.onTextureLoaded(texture);					
-					resolve(this.response);
-				})
+					this.particleTexture = texture;
+					this.onTextureLoaded(texture, resolve, this.response);
+				});
+				textureLoader.load('images/lavatile2.png', (texture) => {
+					this.lavaImgData = this.getImageData(texture.image);
+					this.onTextureLoaded(texture, resolve, this.response);
+				});
+				textureLoader.load('images/cloud.png', (texture) => {
+					this.cloudImgData = this.getImageData(texture.image);
+					texture.name = 'cloud';
+					this.onTextureLoaded(texture, resolve, this.response);
+				});
 			}
 		);
 	}
 
-	onTextureLoaded(texture) {
-		this.particleTexture = texture;
-		let gravity = new b2Vec2(0, 10);
-		window.world = new b2World(gravity);
-		this.createBucket();
-		this.createParticles();
-		this.createMesh();
+	getImageData(image) {
+		var canvas = document.createElement('canvas');
+		var context = canvas.getContext('2d');
+		context.drawImage(image, 0, 0 );
+		return context.getImageData(0, 0, image.width, image.height);
+	}
+
+	onTextureLoaded(texture, resolve, response) {
+		this.loadCounter++;
+		if (this.loadCounter === 3) {
+			let gravity = new b2Vec2(0, 10);
+			window.world = new b2World(gravity);
+			this.createBucket();
+			this.createParticles();
+			this.createMesh();
+			resolve(response);
+		}
 	}
 
 	createBucket () {
@@ -76,7 +95,7 @@ class Particles {
 	createParticles () {
 		
 		let psd = new b2ParticleSystemDef();
-		psd.radius = 0.075;
+		psd.radius = 0.02;
 		psd.destroyByAge = false;
 
 		this.b2ParticleSystem = window.world.CreateParticleSystem(psd);
@@ -93,7 +112,35 @@ class Particles {
 		let particleGroupDef = new b2ParticleGroupDef();
 		particleGroupDef.shape = box;
 		particleGroupDef.flags = b2_viscousParticle;
-		this.b2ParticleSystem.CreateParticleGroup(particleGroupDef);
+		this.group = this.b2ParticleSystem.CreateParticleGroup(particleGroupDef);
+	}
+
+	getColorFromImage(imageData, sampleSize) {
+
+		let particlePositions = this.b2ParticleSystem.GetPositionBuffer();
+		let numOfParticles = particlePositions.length / 2; 
+		let colors = new Float32Array( numOfParticles * 3 );
+
+		let adder = Math.ceil((this.mWidth*this.mHeight)/numOfParticles);
+		let starter = Math.ceil(adder/4);
+
+		for (let i=0, i3 = 0; i < numOfParticles; i++, i3 += 3) {
+
+			let x = Math.floor(particlePositions[i*2] * this.worldScale + this.mWidth / 2);
+			let y = Math.floor(particlePositions[i*2+1] * this.worldScale + this.mHeight / 2) / 2;
+
+			let nX = x-1;
+			let nY = y-1;
+
+			let imageIndex = (nY*imageData.width+nX) * 4;
+			colors[ i3 ] = imageData.data[ imageIndex ] / 255;
+			colors[i3+1] = imageData.data[imageIndex+1] / 255;
+			colors[i3+2] = imageData.data[imageIndex+2] / 255;
+			//console.log('imageIndex', imageIndex);
+			//console.log('color', colors[i3], y, imageIndex, imageData.data.length);
+		}
+
+		return colors;
 	}
 
 	createMesh() {
@@ -102,9 +149,13 @@ class Particles {
 		// creating position attribute to pass postions of vertices base on
 		// where physic engine particles are.
 		this.vertices = new Float32Array(
-				(this.b2ParticleSystem.GetPositionBuffer().length / 2) * 3
+				( this.b2ParticleSystem.GetPositionBuffer().length / 2 ) * 3
 			);
+
+		let lavaColors = this.getColorFromImage( this.lavaImgData, this.vertices.length );
+
 		this.geometry.addAttribute( 'position', new THREE.BufferAttribute( this.vertices, 3 ) );
+		this.geometry.addAttribute( 'lavaColor', new THREE.BufferAttribute( lavaColors, 3 ) );
 
 		this.uniforms = {
 			texture: { type: 't', value: this.particleTexture }
@@ -120,6 +171,16 @@ class Particles {
 		});
 
 		this.mesh = new THREE.Points( this.geometry, material );
+	}
+
+	applyImpulse () {
+		var particleGroup = this.b2ParticleSystem.particleGroups[0];
+  		var numParticles = particleGroup.GetParticleCount();
+		var kImpulseMagnitude = 0.005;
+		var direction = new b2Vec2(Math.random() * 0.2 - 0.1, Math.random() * -0.6);
+		var impulse = new b2Vec2();
+    	b2Vec2.MulScalar(impulse, direction, kImpulseMagnitude * numParticles);
+    	this.group.ApplyLinearImpulse(impulse);
 	}
 
 	updateParticlePositions () {
@@ -150,9 +211,12 @@ class Particles {
 
 	getVertShader() {
 		let shader = [
+			'attribute vec3 lavaColor;',
+			'varying vec3 vColor;',
 			'void main() {',
 				'vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );',
-				'gl_PointSize = 60.0;',
+				'vColor = lavaColor;',
+				'gl_PointSize = 12.0;',
 				'gl_Position = projectionMatrix * mvPosition;',
 			'}'
 		];
@@ -162,9 +226,11 @@ class Particles {
 	getFragShader() {
 		let shader = [
 			'uniform sampler2D texture;',
+			'varying vec3 vColor;',
 			'void main() {',
-				'gl_FragColor = texture2D(texture, gl_PointCoord );',
-				'gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);',
+				'gl_FragColor = vec4( vColor, 1.0 ) *texture2D(texture, gl_PointCoord );',
+				
+				//'gl_FragColor = texture2D(texture, gl_PointCoord );',
 			'}'
 		];
 		return shader.join('');

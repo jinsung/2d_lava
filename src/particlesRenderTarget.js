@@ -25,10 +25,10 @@ class ParticlesRenderTarget {
 		this.scene.add(contents);
 
 		this.camera = new THREE.OrthographicCamera( width  * -0.5,
-												   width  *  0.5,
-												   height *  0.5,
-												   height * -0.5,
-												   -1, 1000 );
+												    width  *  0.5,
+												    height *  0.5,
+												    height * -0.5,
+												    -1, 1000 );
 		this.camera.position.z = 100;
 
 		this.setupScene();
@@ -36,7 +36,7 @@ class ParticlesRenderTarget {
 
 	setupScene() {
 		this.uniforms = {
-			texture: { type: 't', value: this.renderTarget },
+			texture: { type: 't', value: this.renderTarget }
 		}
 
 		let material = new THREE.ShaderMaterial( {
@@ -47,7 +47,6 @@ class ParticlesRenderTarget {
 
 		let plane = new THREE.PlaneBufferGeometry( this.mWidth, this.mHeight );
 		this.mesh = new THREE.Mesh(plane, material);
-		this.scene.add(this.mesh);
 	}
 
 	update() {

@@ -33,7 +33,7 @@ class Main {
 
         // setup particles
         this.isParticleReady = false;
-        this.particlesSize = 200
+        this.particlesSize = 128;
         this.particles = new Particles(this.particlesSize, this.particlesSize);
         this.particles.init().then ( (data) => {
                 this.onParticlesReady(data);
@@ -41,6 +41,7 @@ class Main {
         );
 
         window.addEventListener( 'resize', this.onWindowResize.bind(this), false );
+        document.addEventListener( 'mousedown', this.onDocumentMouseDown.bind(this), false );
     }
 
     onParticlesReady(data) {
@@ -50,6 +51,10 @@ class Main {
             this.particles.mesh );
         this.scene.add( this.particleRenderTarget.mesh );
         this.isParticleReady = true;
+    }
+
+    onDocumentMouseDown() {
+        this.particles.applyImpulse();
     }
 
     onWindowResize() {
@@ -73,9 +78,7 @@ class Main {
 
             this.particleRenderTarget.update();
 
-            
             this.renderer.render( this.scene, this.camera );
-
         }
         
     }
