@@ -216,7 +216,7 @@ class Particles {
 			'void main() {',
 				'vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );',
 				'vColor = lavaColor;',
-				'gl_PointSize = 12.0;',
+				'gl_PointSize = 11.0;',
 				'gl_Position = projectionMatrix * mvPosition;',
 			'}'
 		];
@@ -228,9 +228,8 @@ class Particles {
 			'uniform sampler2D texture;',
 			'varying vec3 vColor;',
 			'void main() {',
-				'gl_FragColor = vec4( vColor, 1.0 ) *texture2D(texture, gl_PointCoord );',
+				'gl_FragColor = vec4( vColor, 1.0 ) * texture2D(texture, gl_PointCoord );',
 				
-				//'gl_FragColor = texture2D(texture, gl_PointCoord );',
 			'}'
 		];
 		return shader.join('');
