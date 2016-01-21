@@ -19,17 +19,14 @@ class Particles {
 					this.lavaImgData = this.getImageData(texture.image);
 					this.onTextureLoaded(texture, resolve, this.response);
 				});
-				textureLoader.load('images/cloud.png', (texture) => {
-					this.cloudImgData = this.getImageData(texture.image);
-					texture.name = 'cloud';
-					this.onTextureLoaded(texture, resolve, this.response);
-				});
 			}
 		);
 	}
 
 	getImageData(image) {
 		var canvas = document.createElement('canvas');
+		canvas.width = image.width;
+		canvas.height = image.height;
 		var context = canvas.getContext('2d');
 		context.drawImage(image, 0, 0 );
 		return context.getImageData(0, 0, image.width, image.height);
@@ -37,7 +34,7 @@ class Particles {
 
 	onTextureLoaded(texture, resolve, response) {
 		this.loadCounter++;
-		if (this.loadCounter === 3) {
+		if (this.loadCounter === 2) {
 			let gravity = new b2Vec2(0, 10);
 			window.world = new b2World(gravity);
 			this.createBucket();
@@ -115,29 +112,27 @@ class Particles {
 		this.group = this.b2ParticleSystem.CreateParticleGroup(particleGroupDef);
 	}
 
-	getColorFromImage(imageData, sampleSize) {
+	getColorFromImage(imageData, sampleSize, dataSize) {
 
 		let particlePositions = this.b2ParticleSystem.GetPositionBuffer();
 		let numOfParticles = particlePositions.length / 2; 
-		let colors = new Float32Array( numOfParticles * 3 );
+		let colors = new Float32Array( numOfParticles * dataSize );
 
 		let adder = Math.ceil((this.mWidth*this.mHeight)/numOfParticles);
 		let starter = Math.ceil(adder/4);
 
-		for (let i=0, i3 = 0; i < numOfParticles; i++, i3 += 3) {
+		for (let i=0, i3 = 0; i < numOfParticles; i++, i3 += dataSize) {
 
 			let x = Math.floor(particlePositions[i*2] * this.worldScale + this.mWidth / 2);
-			let y = Math.floor(particlePositions[i*2+1] * this.worldScale + this.mHeight / 2) / 2;
+			let y = Math.floor(particlePositions[i*2+1] * this.worldScale + this.mHeight / 2);
 
-			let nX = x-1;
-			let nY = y-1;
+			let nX = x;
+			let nY = y;
 
 			let imageIndex = (nY*imageData.width+nX) * 4;
-			colors[ i3 ] = imageData.data[ imageIndex ] / 255;
-			colors[i3+1] = imageData.data[imageIndex+1] / 255;
-			colors[i3+2] = imageData.data[imageIndex+2] / 255;
-			//console.log('imageIndex', imageIndex);
-			//console.log('color', colors[i3], y, imageIndex, imageData.data.length);
+			for (let j=0; j<dataSize; j++) {
+				colors[i3+j] = imageData.data[imageIndex+j] / 255;
+			}
 		}
 
 		return colors;
@@ -152,7 +147,7 @@ class Particles {
 				( this.b2ParticleSystem.GetPositionBuffer().length / 2 ) * 3
 			);
 
-		let lavaColors = this.getColorFromImage( this.lavaImgData, this.vertices.length );
+		let lavaColors = this.getColorFromImage( this.lavaImgData, this.vertices.length, 3 );
 
 		this.geometry.addAttribute( 'position', new THREE.BufferAttribute( this.vertices, 3 ) );
 		this.geometry.addAttribute( 'lavaColor', new THREE.BufferAttribute( lavaColors, 3 ) );
@@ -199,8 +194,8 @@ class Particles {
 			this.vertices[ i3 + 0 ] = x;
 			this.vertices[ i3 + 1 ] = y;
 			this.vertices[ i3 + 2 ] = z;
-		}	
-		
+
+		}
 	}
 
 	update() {
@@ -212,9 +207,11 @@ class Particles {
 	getVertShader() {
 		let shader = [
 			'attribute vec3 lavaColor;',
+
 			'varying vec3 vColor;',
 			'void main() {',
 				'vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );',
+
 				'vColor = lavaColor;',
 				'gl_PointSize = 11.0;',
 				'gl_Position = projectionMatrix * mvPosition;',
@@ -227,9 +224,10 @@ class Particles {
 		let shader = [
 			'uniform sampler2D texture;',
 			'varying vec3 vColor;',
+
 			'void main() {',
-				'gl_FragColor = vec4( vColor, 1.0 ) * texture2D(texture, gl_PointCoord );',
-				
+				'vec4 temp = vec4( vColor, 1.0 ) * 0.8;',
+				'gl_FragColor = temp * texture2D(texture, gl_PointCoord );',
 			'}'
 		];
 		return shader.join('');

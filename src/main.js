@@ -19,8 +19,8 @@ class Main {
          */
         this.camera = new THREE.OrthographicCamera( 
     					  this.width / -2, this.width / 2, 
-                          this.height / 2, this.height / -2, 1, 1000);
-        this.camera.position.z = 100;
+                          this.height / 2, this.height / -2, 1, 2);
+        this.camera.position.z = 1;
 
         this.scene = new THREE.Scene();
 
@@ -46,10 +46,7 @@ class Main {
 
     onParticlesReady(data) {
 
-        this.particleRenderTarget = new ParticlesRenderTarget( 
-            this.renderer, this.width, this.height, 
-            this.particles.mesh );
-        this.scene.add( this.particleRenderTarget.mesh );
+        this.scene.add(this.particles.mesh);
         this.isParticleReady = true;
     }
 
@@ -75,8 +72,6 @@ class Main {
 
             this.particles.update();
             this.renderer.clear();
-
-            this.particleRenderTarget.update();
 
             this.renderer.render( this.scene, this.camera );
         }
